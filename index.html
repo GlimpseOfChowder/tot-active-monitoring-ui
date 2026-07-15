@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <title>Active Monitoring — Report Builder</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -96,8 +100,41 @@
   .entry-remove{margin-left:auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:4px;}
   .entry-remove:hover{color:var(--attn);background:var(--attn-bg);}
 
-  .entry-grid{display:grid;grid-template-columns:1.5fr .55fr .55fr .8fr .9fr;gap:8px;margin-bottom:10px;}
-  @media (max-width:1250px){.entry-grid{grid-template-columns:1fr 1fr;} }
+  .entry-grid{
+    display:grid;
+    grid-template-columns: minmax(170px,1.5fr) minmax(95px,.55fr) minmax(95px,.55fr) minmax(120px,.8fr) minmax(150px,.9fr);
+    grid-template-areas: "domain start end duration status";
+    gap:8px;margin-bottom:10px;
+  }
+  .field-domain{grid-area:domain;}
+  .field-start{grid-area:start;}
+  .field-end{grid-area:end;}
+  .field-duration{grid-area:duration;}
+  .field-status{grid-area:status;}
+  .field-description{grid-column:1/-1;}
+  .dash-link-wrap{margin-top:5px;min-height:15px;}
+  .dash-link{font-family:var(--mono);font-size:11px;color:var(--brass);text-decoration:none;display:inline-flex;align-items:center;gap:3px;}
+  .dash-link:hover{text-decoration:underline;}
+
+  /* laptop widths: domain gets its own full-width row, the rest share a row of four */
+  @media (max-width:1250px){
+    .entry-grid{
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-areas:
+        "domain domain domain domain"
+        "start end duration status";
+    }
+  }
+  /* narrow / mobile: stack further so nothing gets crushed below a legible width */
+  @media (max-width:640px){
+    .entry-grid{
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "domain domain"
+        "start end"
+        "duration status";
+    }
+  }
   .range-pair{display:flex;align-items:center;gap:4px;}
   .range-pair span{color:var(--text-faint);font-family:var(--mono);}
   .range-pair input{font-family:var(--mono);}
@@ -175,7 +212,7 @@
     <div class="field">
       <label>Reporter</label>
       <select id="reporter">
-        <option>amanda</option><option>seanl</option><option>charlesevans</option><option>darrin</option>
+        <option>amanda</option><option>milner</option><option>seanl</option><option>charlesevans</option><option>darrin</option>
       </select>
     </div>
     <div class="field">
@@ -278,13 +315,39 @@
 const MATTERMOST_WEBHOOK_URL = "https://mattermost-u35315.vm.elestio.app/hooks/w5rmgeepybr4zcyjjkqcxoxbhc";
 
 // Paste the /exec URL from your Apps Script deployment here (see scorecard-sync-appsscript.gs)
-const APPS_SCRIPT_URL = "";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwezQGziOP5bEIXVmyKAHtlnPDF-4XSGgZQXWH3OMkhg54Icdrj3UEA4k7eE08scD8H/exec";
 
 const DOMAINS = ["justcbdstore.com","thevaporsupplier.com","thevaporshoppeusa.com","bigdvapor.net",
   "fistdistro.com","fullsend.com","vapesocietysupplies.com","vapedepotusa.com","alternativepods.com",
   "zuluvape.com","giantvapes.com","kangerwholesaleusa.com","mmschainportal.com","vaperanger.com","myqwin.com"];
-const TEAM = ["amanda","seanl","charlesevans","darrin"];
+const TEAM = ["amanda","seanl","charlesevans","darrin","milner"];
 const DOMAINS_STORAGE_KEY = 'activeMonitoring_customDomains';
+
+// Direct links to each store's orders dashboard (Shopify admin / WooCommerce wp-admin / BigCommerce manage)
+// so agents can jump straight there instead of hunting through login pages.
+const DOMAIN_DASHBOARDS = {
+  'justcbdstore.com': 'https://admin.shopify.com/store/just-cbd-store/orders',
+  'thevaporsupplier.com': 'https://admin.shopify.com/store/b2bvapetest/orders',
+  'thevaporshoppeusa.com': 'https://admin.shopify.com/store/the-vapor-shoppe-usa/orders',
+  'bigdvapor.net': 'https://admin.shopify.com/store/big-d-vapor/orders',
+  'fistdistro.com': 'https://admin.shopify.com/store/fistdistro/orders',
+  'fullsend.com': 'https://admin.shopify.com/store/full-send-pouches/orders',
+  'vapesocietysupplies.com': 'https://vapesocietysupplies.com/wp-admin/edit.php?post_type=shop_order',
+  'vapedepotusa.com': 'https://vapedepotusa.com/wp-admin/admin.php?page=wc-orders',
+  'alternativepods.com': 'https://store-t8rs8uxm5v.mybigcommerce.com/manage/orders',
+  'zuluvape.com': 'https://store-iyk7zv0kzc.mybigcommerce.com/manage/orders',
+  'giantvapes.com': 'https://admin.shopify.com/store/giantvapes/orders',
+  'kangerwholesaleusa.com': 'https://store-s62e2h8.mybigcommerce.com/manage/orders',
+  'mmschainportal.com': 'https://admin.shopify.com/store/mmsvr/orders',
+  'vaperanger.com': 'https://store-hqim8tz8ly.mybigcommerce.com/manage/orders',
+};
+
+function dashLinkHtml(domain){
+  const key = (domain || '').trim().toLowerCase();
+  const url = DOMAIN_DASHBOARDS[key];
+  if(!url) return '';
+  return '<a href="'+url+'" target="_blank" rel="noopener noreferrer" class="dash-link">Open orders dashboard ↗</a>';
+}
 
 // Restore any domains added in earlier sessions on this browser (see registerNewDomain / saveCustomDomains).
 // Wrapped in try/catch since localStorage isn't available in every embedding context (e.g. a sandboxed preview) —
@@ -412,14 +475,15 @@ function renderLog(){
     let gridHtml = '<div class="entry-grid">';
 
     if(r.type === 'store'){
-      gridHtml += '<div class="field"><label>Domain</label><input list="domainList" data-field="domain" data-id="'+r.id+'" value="'+r.domain+'" placeholder="e.g. giantvapes.com"></div>';
-      gridHtml += '<div class="field"><label>Range start</label><input data-field="rangeStart" data-id="'+r.id+'" value="'+r.rangeStart+'" placeholder="151270"></div>';
-      gridHtml += '<div class="field"><label>Range end</label><input data-field="rangeEnd" data-id="'+r.id+'" value="'+r.rangeEnd+'" placeholder="151301"></div>';
+      gridHtml += '<div class="field field-domain"><label>Domain</label><input list="domainList" data-field="domain" data-id="'+r.id+'" value="'+r.domain+'" placeholder="e.g. giantvapes.com">' +
+        '<div class="dash-link-wrap" id="dashlink-'+r.id+'">'+dashLinkHtml(r.domain)+'</div></div>';
+      gridHtml += '<div class="field field-start"><label>Range start</label><input data-field="rangeStart" data-id="'+r.id+'" value="'+r.rangeStart+'" placeholder="151270"></div>';
+      gridHtml += '<div class="field field-end"><label>Range end</label><input data-field="rangeEnd" data-id="'+r.id+'" value="'+r.rangeEnd+'" placeholder="151301"></div>';
     } else {
-      gridHtml += '<div class="field" style="grid-column:span 3;"><label>Description</label><input data-field="label" data-id="'+r.id+'" value="'+r.label+'" placeholder="e.g. No Vape Ranger Alerts on the Monitoring column"></div>';
+      gridHtml += '<div class="field field-description"><label>Description</label><input data-field="label" data-id="'+r.id+'" value="'+r.label+'" placeholder="e.g. No Vape Ranger Alerts on the Monitoring column"></div>';
     }
 
-    gridHtml += '<div class="field"><label>Duration</label><div class="dur-pair">' +
+    gridHtml += '<div class="field field-duration"><label>Duration</label><div class="dur-pair">' +
       '<input data-field="duration" data-id="'+r.id+'" value="'+r.duration+'" placeholder="3">' +
       '<select data-field="durationUnit" data-id="'+r.id+'">' +
         '<option value="min"'+(r.durationUnit==='min'?' selected':'')+'>min</option>' +
@@ -427,7 +491,7 @@ function renderLog(){
         '<option value="hr"'+(r.durationUnit==='hr'?' selected':'')+'>hr</option>' +
       '</select></div></div>';
 
-    gridHtml += '<div class="field"><label>Status</label><div class="status-toggle">' +
+    gridHtml += '<div class="field field-status"><label>Status</label><div class="status-toggle">' +
       '<div class="status-btn ok '+(r.status==='ok'?'active':'')+'" data-status="ok" data-id="'+r.id+'">👍 OK</div>' +
       '<div class="status-btn attn '+(r.status==='attn'?'active':'')+'" data-status="attn" data-id="'+r.id+'">‼️ Attn</div>' +
       '</div></div>';
@@ -502,6 +566,11 @@ function onFieldChange(e){
   const r = rows.find(x=>x.id===id);
   if(!r) return;
   r[field] = e.currentTarget.value;
+
+  if(field === 'domain'){
+    const linkEl = document.getElementById('dashlink-'+id);
+    if(linkEl) linkEl.innerHTML = dashLinkHtml(r.domain);
+  }
 
   // once they've finished typing a domain (change/blur, not every keystroke),
   // remember it so it shows up as a suggestion on future rows
@@ -636,6 +705,7 @@ function buildReportText(){
   const attnCount = rows.filter(r=>r.type==='store' && r.status==='attn').length;
 
   const activeMentions = Object.keys(mentionState).filter(k=>mentionState[k]).map(n=>'@'+n).join(' ');
+  const reporter = document.getElementById('reporter').value;
   const date = document.getElementById('dateChecked').value;
   const dateFmt = date ? new Date(date+'T00:00:00').toLocaleDateString('en-US',{month:'long', day:'numeric'}) : '';
   const shift = document.getElementById('shift').value;
@@ -645,7 +715,7 @@ function buildReportText(){
   let summaryLine = 'Active Monitoring: '+okCount+'/'+totalStores+' Clients Ok';
   if(attnCount>0) summaryLine += ', '+':bangbang: '.repeat(1).trim()+' '+attnCount+' Require Attention';
   lines.push(summaryLine);
-  lines.push('Orders Checked: '+dateFmt+' ('+shift+')');
+  lines.push('Orders Checked: '+dateFmt+' ('+shift+') by @'+reporter);
   lines.push('');
 
   rows.forEach(r=>{
